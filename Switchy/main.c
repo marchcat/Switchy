@@ -13,16 +13,24 @@ void SwitchToNextInputLanguage();
 LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam);
 
 HHOOK hHook;
+HANDLE hMutex = NULL;
 BOOL enabled = TRUE;
 BOOL keystrokeCapsProcessed = FALSE;
 BOOL keystrokeShiftProcessed = FALSE;
 
 int main(int argc, char** argv)
 {
-	HANDLE hMutex = CreateMutex(0, 0, "Switchy");
+	hMutex = CreateMutex(0, 0, "Switchy");
+	if (hMutex == NULL)
+	{
+		ShowError("Failed to create mutex!");
+		return 1;
+	}
+	
 	if (GetLastError() == ERROR_ALREADY_EXISTS)
 	{
 		ShowError("Another instance of Switchy is already running!");
+		CloseHandle(hMutex);
 		return 1;
 	}
 
@@ -30,6 +38,7 @@ int main(int argc, char** argv)
 	if (hHook == NULL)
 	{
 		ShowError("Error calling \"SetWindowsHookEx(...)\"");
+		CloseHandle(hMutex);
 		return 1;
 	}
 
@@ -41,6 +50,7 @@ int main(int argc, char** argv)
 	}
 
 	UnhookWindowsHookEx(hHook);
+	CloseHandle(hMutex);
 
 	return 0;
 }
