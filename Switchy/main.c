@@ -5,43 +5,20 @@
 
 typedef NTSTATUS(WINAPI* RtlGetVersionPtr)(PRTL_OSVERSIONINFOW);
 
-typedef struct {
-	BOOL popup;
-} Settings;
-
 void ShowError(LPCSTR message);
-DWORD GetOSVersion();
 void PressKey(int keyCode);
 void ReleaseKey(int keyCode);
 void ToggleCapsLockState();
 void SwitchToNextInputLanguage();
 LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam);
 
-
 HHOOK hHook;
 BOOL enabled = TRUE;
 BOOL keystrokeCapsProcessed = FALSE;
 BOOL keystrokeShiftProcessed = FALSE;
 
-Settings settings = {
-	.popup = FALSE
-};
-
-
 int main(int argc, char** argv)
 {
-	if (argc > 1 && strcmp(argv[1], "nopopup") == 0)
-	{
-		settings.popup = FALSE;
-	}
-	else
-	{
-		settings.popup = GetOSVersion() >= 10;
-	}
-#if _DEBUG
-	printf("Pop-up is %s\n", settings.popup ? "enabled" : "disabled");
-#endif
-
 	HANDLE hMutex = CreateMutex(0, 0, "Switchy");
 	if (GetLastError() == ERROR_ALREADY_EXISTS)
 	{
@@ -68,44 +45,20 @@ int main(int argc, char** argv)
 	return 0;
 }
 
-
 void ShowError(LPCSTR message)
 {
 	MessageBox(NULL, message, "Error", MB_OK | MB_ICONERROR);
 }
-
-
-DWORD GetOSVersion()
-{
-	HMODULE hMod = GetModuleHandleW(L"ntdll.dll");
-	RTL_OSVERSIONINFOW osvi = { 0 };
-
-	if (hMod)
-	{
-		RtlGetVersionPtr p = (RtlGetVersionPtr)GetProcAddress(hMod, "RtlGetVersion");
-
-		if (p)
-		{
-			osvi.dwOSVersionInfoSize = sizeof(osvi);
-			p(&osvi);
-		}
-	}
-
-	return osvi.dwMajorVersion;
-}
-
 
 void PressKey(int keyCode)
 {
 	keybd_event(keyCode, 0, 0, 0);
 }
 
-
 void ReleaseKey(int keyCode)
 {
 	keybd_event(keyCode, 0, KEYEVENTF_KEYUP, 0);
 }
-
 
 void ToggleCapsLockState()
 {
