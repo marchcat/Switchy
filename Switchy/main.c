@@ -14,6 +14,7 @@ DWORD GetOSVersion();
 void PressKey(int keyCode);
 void ReleaseKey(int keyCode);
 void ToggleCapsLockState();
+void SwitchToNextInputLanguage();
 LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam);
 
 
@@ -21,7 +22,6 @@ HHOOK hHook;
 BOOL enabled = TRUE;
 BOOL keystrokeCapsProcessed = FALSE;
 BOOL keystrokeShiftProcessed = FALSE;
-BOOL winPressed = FALSE;
 
 Settings settings = {
 	.popup = FALSE
@@ -116,6 +116,17 @@ void ToggleCapsLockState()
 #endif // _DEBUG
 }
 
+void SwitchToNextInputLanguage()
+{
+	HWND hwnd = GetForegroundWindow();
+
+	// Post a WM_INPUTLANGCHANGEREQUEST message to change to the next input language
+	// INPUTLANGCHANGE_FORWARD means "next language"
+	PostMessage(hwnd, WM_INPUTLANGCHANGEREQUEST, INPUTLANGCHANGE_FORWARD, 0);
+#if _DEBUG
+	printf("Language switch requested via API\n");
+#endif
+}
 
 LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
 {
@@ -142,20 +153,11 @@ LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
 			{
 				keystrokeCapsProcessed = FALSE;
 
-				if (winPressed)
-				{
-					winPressed = FALSE;
-					ReleaseKey(VK_LWIN);
-				}
-
-				if (enabled && !settings.popup)
+				if (enabled)
 				{
 					if (!keystrokeShiftProcessed)
 					{
-						PressKey(VK_MENU);
-						PressKey(VK_LSHIFT);
-						ReleaseKey(VK_MENU);
-						ReleaseKey(VK_LSHIFT);
+						SwitchToNextInputLanguage();
 					}
 					else
 					{
@@ -178,23 +180,12 @@ LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
 					ToggleCapsLockState();
 					return 1;
 				}
-				else
-				{
-					if (settings.popup)
-					{
-						PressKey(VK_LWIN);
-						PressKey(VK_SPACE);
-						ReleaseKey(VK_SPACE);
-						winPressed = TRUE;
-					}
-				}
 			}
 			return 1;
 		}
 
 		else if (key->vkCode == VK_LSHIFT)
 		{
-
 			if ((wParam == WM_KEYUP || wParam == WM_SYSKEYUP) && !keystrokeCapsProcessed)
 			{
 				keystrokeShiftProcessed = FALSE;
@@ -212,14 +203,6 @@ LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
 				if (keystrokeCapsProcessed == TRUE)
 				{
 					ToggleCapsLockState();
-					if (settings.popup)
-					{
-						PressKey(VK_LWIN);
-						PressKey(VK_SPACE);
-						ReleaseKey(VK_SPACE);
-						winPressed = TRUE;
-					}
-
 					return 0;
 				}
 			}
